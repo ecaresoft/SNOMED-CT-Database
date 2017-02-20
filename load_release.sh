@@ -11,7 +11,16 @@ then
 	exit -1
 fi
 
-dbUsername=root
+dbServer=postgresql
+echo "Enter database server type [$dbServer]:"
+read newdbServer
+if [ -n "$newdbServer" ]
+then
+	dbServer=$newdbServer
+fi
+
+
+dbUsername=mikkel
 echo "Enter database username [$dbUsername]:"
 read newDbUsername
 if [ -n "$newDbUsername" ]
@@ -30,7 +39,7 @@ fi
 #Unzip the files here, junking the structure
 localExtract="tmp_extracted"
 generatedLoadScript="tmp_loader.sql"
-generatedEnvScript="tmp_environment-mysql.sql"
+generatedEnvScript="tmp_environment-${dbServer}.sql"
 
 #What types of files are we loading - delta, snapshot, full or all?
 case "${loadType}" in 
@@ -62,7 +71,7 @@ echo -e "\nGenerating Environment script for ${loadType} type(s)"
 echo "/* Script Generated Automatically by load_release.sh ${now} */" > ${generatedEnvScript}
 for fileType in ${fileTypes[@]}; do
 	fileTypeLetter=`echo "${fileType}" | head -c 1 | tr '[:upper:]' '[:lower:]'`
-	tail -n +2 environment-mysql-template.sql | while read thisLine
+	tail -n +2 environment-${dbServer}-template.sql | while read thisLine
 	do
 		echo "${thisLine/TYPE/${fileTypeLetter}}" >> ${generatedEnvScript}
 	done
@@ -72,6 +81,7 @@ function addLoadScript() {
 	for fileType in ${fileTypes[@]}; do
 		echo "load data local" >> ${generatedLoadScript}
 		fileName=${1/TYPE/${fileType}}
+		fileName=${fileName/INT/AU1000036}
 		fileName=${fileName/DATE/${releaseDate}}
 
 		#Check file exists - try beta version if not
@@ -100,23 +110,39 @@ function addLoadScript() {
 echo -e "\nGenerating loading script for $releaseDate"
 echo "/* Generated Loader Script */" >  ${generatedLoadScript}
 addLoadScript sct2_Concept_TYPE_INT_DATE.txt concept
-addLoadScript sct2_Description_TYPE-en_INT_DATE.txt description
-addLoadScript sct2_StatedRelationship_TYPE_INT_DATE.txt stated_relationship
+addLoadScript sct2_Description_TYPE-en-AU_INT_DATE.txt description
+#addLoadScript sct2_StatedRelationship_TYPE_INT_DATE.txt stated_relationship
 addLoadScript sct2_Relationship_TYPE_INT_DATE.txt relationship
-addLoadScript sct2_TextDefinition_TYPE-en_INT_DATE.txt textdefinition
+#addLoadScript sct2_TextDefinition_TYPE-en_INT_DATE.txt textdefinition
 addLoadScript der2_cRefset_AttributeValueTYPE_INT_DATE.txt attributevaluerefset
-addLoadScript der2_cRefset_LanguageTYPE-en_INT_DATE.txt langrefset
+addLoadScript der2_cRefset_LanguageTYPE-en-AU_INT_DATE.txt langrefset
 addLoadScript der2_cRefset_AssociationReferenceTYPE_INT_DATE.txt associationrefset
 
-mysql -u ${dbUsername} ${dbUserPassword}  --local-infile << EOF
-	select 'Ensuring schema ${dbName} exists' as '  ';
-	create database IF NOT EXISTS ${dbName};
-	use ${dbName};
-	select '(re)Creating Schema using ${generatedEnvScript}' as '  ';
-	source ${generatedEnvScript};
-	select 'Loading RF2 Data using ${generatedLoadScript}' as '  ';
-	source ${generatedLoadScript};
+if [ ${dbServer} = 'mysql' ]
+then
+	mysql -u ${dbUsername} ${dbUserPassword}  --local-infile << EOF
+		select 'Ensuring mysql schema ${dbName} exists' as '  ';
+		create database IF NOT EXISTS ${dbName};
+		use ${dbName};
+		select '(re)Creating Schema using ${generatedEnvScript}' as '  ';
+		source ${generatedEnvScript};
+		select 'Loading RF2 Data using ${generatedLoadScript}' as '  ';
+		source ${generatedLoadScript};
 EOF
+fi 
+
+if [ ${dbServer} = 'postgressql' ]
+then
+  psql -U ${dbUsername} ${dbUserPassword}  --command << EOF
+		select 'Ensuring Postgres schema ${dbName} exists' as '  ';
+		create database IF NOT EXISTS ${dbName};
+		use ${dbName};
+		select '(re)Creating Schema using ${generatedEnvScript}' as '  ';
+		source ${generatedEnvScript};
+		select 'Loading RF2 Data using ${generatedLoadScript}' as '  ';
+		source ${generatedLoadScript};
+EOF
+fi 
 
 rm -rf $localExtract
 #We'll leave the generated environment & load scripts for inspection
