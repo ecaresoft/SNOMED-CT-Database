@@ -12,15 +12,8 @@ then
 fi
 
 dbServer=postgresql
-echo "Enter database server type [$dbServer]:"
-read newdbServer
-if [ -n "$newdbServer" ]
-then
-	dbServer=$newdbServer
-fi
 
-
-dbUsername=mikkel
+dbUsername=benoror
 echo "Enter database username [$dbUsername]:"
 read newDbUsername
 if [ -n "$newDbUsername" ]
@@ -64,6 +57,8 @@ esac
 #Determine the release date from the filenames
 releaseDate=`ls -1 ${localExtract}/*.txt | head -1 | egrep -o '[0-9]{8}'`	
 
+pwd=`pwd`
+
 #Generate the environemnt script by running through the template as 
 #many times as required
 now=`date +"%Y%m%d_%H%M%S"`
@@ -79,7 +74,6 @@ done
 
 function addLoadScript() {
 	for fileType in ${fileTypes[@]}; do
-		echo "load data local" >> ${generatedLoadScript}
 		fileName=${1/TYPE/${fileType}}
 		fileName=${fileName/INT/AU1000036}
 		fileName=${fileName/DATE/${releaseDate}}
@@ -96,13 +90,13 @@ function addLoadScript() {
 
 		tableName=${2}_`echo $fileType | head -c 1 | tr '[:upper:]' '[:lower:]'`
 
-		echo -e "\tinfile '"${localExtract}/${fileName}"'" >> ${generatedLoadScript}
-		echo -e "\tinto table ${tableName}" >> ${generatedLoadScript}
-		echo -e "\tcolumns terminated by '\\\t'" >> ${generatedLoadScript}
-		echo -e "\tlines terminated by '\\\r\\\n'" >> ${generatedLoadScript}
-		echo -e "\tignore 1 lines;" >> ${generatedLoadScript}
-		echo -e ""  >> ${generatedLoadScript}
-		echo -e "select 'Loaded ${fileName} into ${tableName}' as '  ';" >> ${generatedLoadScript}
+    echo -e "\tCOPY ${tableName}" >> ${generatedLoadScript}
+    echo -e "\tFROM '"${pwd}/${localExtract}/${fileName}"'" >> ${generatedLoadScript}
+    echo -e "\tWITH DELIMITER AS E'\\\t'" >> ${generatedLoadScript}
+    echo -e "\tQUOTE E'\\\b'" >> ${generatedLoadScript}
+    echo -e "\tNULL AS ''" >> ${generatedLoadScript}
+    echo -e "\tCSV HEADER;" >> ${generatedLoadScript}
+		echo -e "select 'Loaded ${fileName} into ${tableName}' as \"  \";" >> ${generatedLoadScript}
 		echo -e ""  >> ${generatedLoadScript}
 	done
 }
@@ -118,31 +112,8 @@ addLoadScript der2_cRefset_AttributeValueTYPE_INT_DATE.txt attributevaluerefset
 addLoadScript der2_cRefset_LanguageTYPE-en-AU_INT_DATE.txt langrefset
 addLoadScript der2_cRefset_AssociationReferenceTYPE_INT_DATE.txt associationrefset
 
-if [ ${dbServer} = 'mysql' ]
-then
-	mysql -u ${dbUsername} ${dbUserPassword}  --local-infile << EOF
-		select 'Ensuring mysql schema ${dbName} exists' as '  ';
-		create database IF NOT EXISTS ${dbName};
-		use ${dbName};
-		select '(re)Creating Schema using ${generatedEnvScript}' as '  ';
-		source ${generatedEnvScript};
-		select 'Loading RF2 Data using ${generatedLoadScript}' as '  ';
-		source ${generatedLoadScript};
-EOF
-fi 
-
-if [ ${dbServer} = 'postgressql' ]
-then
-  psql -U ${dbUsername} ${dbUserPassword}  --command << EOF
-		select 'Ensuring Postgres schema ${dbName} exists' as '  ';
-		create database IF NOT EXISTS ${dbName};
-		use ${dbName};
-		select '(re)Creating Schema using ${generatedEnvScript}' as '  ';
-		source ${generatedEnvScript};
-		select 'Loading RF2 Data using ${generatedLoadScript}' as '  ';
-		source ${generatedLoadScript};
-EOF
-fi 
+psql -U ${dbUsername} ${dbUserPassword} ${dbName} < ${generatedEnvScript}
+psql -U ${dbUsername} ${dbUserPassword} ${dbName} < ${generatedLoadScript}
 
 rm -rf $localExtract
 #We'll leave the generated environment & load scripts for inspection

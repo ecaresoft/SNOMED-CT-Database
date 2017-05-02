@@ -25,7 +25,7 @@ moduleid varchar(18) not null,
 conceptid varchar(18) not null,
 languagecode varchar(2) not null,
 typeid varchar(18) not null,
-term varchar(255) not null,
+term varchar(2048) not null,
 casesignificanceid varchar(18) not null);
 CREATE INDEX idx_id on description_TYPE (id);
 CREATE INDEX idx_effectivetime on description_TYPE (effectivetime);
