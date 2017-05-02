@@ -111,6 +111,9 @@ addLoadScript sct2_Relationship_TYPE_INT_DATE.txt relationship
 addLoadScript der2_cRefset_AttributeValueTYPE_INT_DATE.txt attributevaluerefset
 addLoadScript der2_cRefset_LanguageTYPE-en-AU_INT_DATE.txt langrefset
 addLoadScript der2_cRefset_AssociationReferenceTYPE_INT_DATE.txt associationrefset
+addLoadScript der2_Refset_ProblemDiagnosisTYPE_INT_DATE.txt diagnosisrefset
+addLoadScript der2_Refset_RequestTestNameTYPE_INT_DATE.txt requesttestrefset
+addLoadScript der2_Refset_ImagingProcedureTYPE_INT_DATE.txt imagingrefset
 
 psql -U ${dbUsername} ${dbUserPassword} ${dbName} < ${generatedEnvScript}
 psql -U ${dbUsername} ${dbUserPassword} ${dbName} < ${generatedLoadScript}

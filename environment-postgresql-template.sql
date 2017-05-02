@@ -148,3 +148,33 @@ mapTarget varchar(18),
 correlationId varchar(18) not null
 );
 
+drop table if exists diagnosisrefset_TYPE cascade;
+create table diagnosisrefset_TYPE(
+id varchar(36) not null,
+effectivetime char(8) not null,
+active char(1) not null,
+moduleid varchar(18) not null,
+refsetid varchar(18) not null,
+referencedcomponentid varchar(18) not null
+);
+
+drop table if exists requesttestrefset_TYPE cascade;
+create table requesttestrefset_TYPE(
+id varchar(36) not null,
+effectivetime char(8) not null,
+active char(1) not null,
+moduleid varchar(18) not null,
+refsetid varchar(18) not null,
+referencedcomponentid varchar(18) not null
+);
+
+drop table if exists imagingrefset_TYPE cascade;
+create table imagingrefset_TYPE(
+id varchar(36) not null,
+effectivetime char(8) not null,
+active char(1) not null,
+moduleid varchar(18) not null,
+refsetid varchar(18) not null,
+referencedcomponentid varchar(18) not null
+);
+
